@@ -4,104 +4,83 @@
 
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/8bit/button";
-import { Mic, StopCircle } from "lucide-react";
+import { Mic, StopCircle, Play } from "lucide-react";
 import Image from "next/image";
-import { useState, useRef, useEffect } from "react";
-import Script from "next/script";
-import AudioWaveform from "@/components/AudioWaveform";
-
-// Define the RecordRTC type for TypeScript
-declare var RecordRTC: any;
+import { useState, useRef } from "react";
+import AudioWaveform from "@/components/AudioWaveform"; // Import the waveform component
 
 export default function Talk() {
-    const [isLoading, setIsLoading] = useState(false);
     const [isRecording, setIsRecording] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
     const [transcription, setTranscription] = useState("");
-    const [audioUrl, setAudioUrl] = useState<string | null>(null);
-    const [isScriptLoaded, setIsScriptLoaded] = useState(false);
-    const [previewStream, setPreviewStream] = useState<MediaStream | null>(null);
+    const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
+    const [audioUrl, setAudioUrl] = useState<string | null>(null); // State to hold the recorded audio URL
 
-    const recorderRef = useRef<any>(null);
-    const streamRef = useRef<MediaStream | null>(null);
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const audioChunksRef = useRef<Blob[]>([]);
 
-    const handleScriptLoad = () => {
-        setIsScriptLoaded(true);
-    };
-
-    const startRecording = async () => {
-        if (!isScriptLoaded) {
-            console.error("RecordRTC script not loaded yet.");
-            return;
-        }
-
-        // Clear previous results
-        setTranscription("");
-        setAudioUrl(null);
-
+    const handleStartRecording = async () => {
+        setTranscription(""); // Clear previous transcription
+        setAudioUrl(null); // Clear previous audio
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                audio: {
-                    noiseSuppression: true,
-                    echoCancellation: true,
-                },
-            });
-            
-            streamRef.current = stream;
-            setPreviewStream(stream); // For the waveform visualizer
-
-            const recorder = new RecordRTC(stream, {
-                type: 'audio',
-                mimeType: 'audio/webm',
-                sampleRate: 44100,
-                desiredSampRate: 16000,
-                recorderType: RecordRTC.StereoAudioRecorder,
-                numberOfAudioChannels: 1,
-                bitsPerSecond: 128000,
-                disableLogs: true,
-            });
-
-            recorder.startRecording();
-            recorderRef.current = recorder;
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            setMediaStream(stream);
             setIsRecording(true);
-        } catch (error) {
-            console.error("Error starting recording:", error);
-        }
-    };
 
-    const stopRecording = () => {
-        if (recorderRef.current) {
-            recorderRef.current.stopRecording(() => {
-                const blob = recorderRef.current.getBlob();
-                const url = URL.createObjectURL(blob);
-                setAudioUrl(url);
-                handleAudioUpload(blob);
+            const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+            mediaRecorderRef.current = mediaRecorder;
 
-                // Clean up
-                if (streamRef.current) {
-                    streamRef.current.getTracks().forEach(track => track.stop());
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    audioChunksRef.current.push(event.data);
                 }
-                recorderRef.current.destroy();
-                recorderRef.current = null;
-                streamRef.current = null;
-                setPreviewStream(null);
-            });
-            setIsRecording(false);
+            };
+
+            mediaRecorder.onstop = handleSendAudio;
+
+            mediaRecorder.start();
+        } catch (error) {
+            console.error("Error accessing microphone:", error);
+            // Handle permissions error gracefully
         }
     };
 
-    const handleAudioUpload = async (blob: Blob) => {
+    const handleStopRecording = () => {
+        if (mediaRecorderRef.current && isRecording) {
+            mediaRecorderRef.current.stop();
+            // Stop all tracks in the stream
+            mediaStream?.getTracks().forEach(track => track.stop());
+            setIsRecording(false);
+            setMediaStream(null); // Clear the stream
+        }
+    };
+
+    const handleSendAudio = async () => {
         setIsLoading(true);
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        
+        // Create a URL for playback and set it to state
+        const url = URL.createObjectURL(audioBlob);
+        setAudioUrl(url);
+
+        audioChunksRef.current = []; // Clear chunks for next recording
+
         const formData = new FormData();
-        formData.append('audio', blob, 'recording.webm');
+        formData.append('audio', audioBlob, 'recording.webm');
 
         try {
             const response = await fetch('/api/transcribe', {
                 method: 'POST',
                 body: formData,
             });
-            if (!response.ok) throw new Error('Network response was not ok');
+
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+
             const result = await response.json();
             setTranscription(result.text);
+
         } catch (error) {
             console.error("Error sending audio:", error);
             setTranscription("Error: Could not transcribe audio.");
@@ -111,54 +90,47 @@ export default function Talk() {
     };
 
     return (
-        <>
-            <Script
-                src="https://www.WebRTC-Experiment.com/RecordRTC.js"
-                strategy="lazyOnload"
-                onLoad={handleScriptLoad}
-            />
-            <div className="h-screen overflow-hidden">
-                <Navbar />
-                <div className="flex flex-col gap-8 items-center justify-center mt-10">
-                    <div className="w-[750px] h-[400px] flex items-center justify-center relative">
-                        {isRecording && previewStream ? (
-                            <AudioWaveform mediaStream={previewStream} />
-                        ) : (
-                            // <Image src="/background.jpg" width={750} height={750} alt="background" className="rounded-lg"/
-                            <></>
-                        )}
-                    </div>
+        <div className="h-screen overflow-hidden">
+            <Navbar />
+            <div className="flex flex-col gap-8 items-center justify-center mt-10">
+                <div className="w-[750px] h-[400px] flex items-center justify-center relative">
+                    {isRecording ? (
+                        <AudioWaveform mediaStream={mediaStream} />
+                    ) : (
+                        // <Image src="/background.jpg" width={750} height={750} alt="background" className="rounded-lg"/>
+                        <></>
+                    )}
+                </div>
 
-                    <div className="flex flex-col items-center gap-4">
-                        <p className="text-sm text-gray-500 capitalize">
-                            {isRecording ? "Recording..." : (isScriptLoaded ? "Ready to Record" : "Loading Recorder...")}
-                        </p>
-                        <Button
-                            onClick={isRecording ? stopRecording : startRecording}
-                            disabled={!isScriptLoaded}
-                            className="p-6 rounded-full shadow-lg transform active:scale-95 transition-transform disabled:opacity-50"
-                        >
-                            {isRecording ? <StopCircle size={28} /> : <Mic size={28} />}
-                        </Button>
-                    </div>
+                {/* Push-to-Talk Button */}
+                <Button
+                    onMouseDown={handleStartRecording}
+                    onMouseUp={handleStopRecording}
+                    onTouchStart={handleStartRecording} // For mobile
+                    onTouchEnd={handleStopRecording}   // For mobile
+                    className="p-6 rounded-full shadow-lg transform active:scale-95 transition-transform"
+                >
+                    {isRecording ? <StopCircle size={28} /> : <Mic size={28} />}
+                </Button>
 
-                    <div className="w-full max-w-2xl p-4 text-center">
-                        {isLoading && <p>Transcribing your masterpiece... 🎙️</p>}
-                        {!isLoading && (transcription || audioUrl) && (
-                            <div className="mt-4 p-4 border rounded-lg bg-gray-50 flex flex-col items-center gap-4 shadow-sm">
-                                {transcription && (
-                                    <p className="text-lg text-gray-800 leading-relaxed">{transcription}</p>
-                                )}
-                                {audioUrl && (
-                                    <div className="w-full max-w-md">
-                                        <audio controls src={audioUrl} className="w-full"></audio>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </div>
+                <div className="w-full max-w-2xl p-4 text-center">
+                    {isLoading && <p>Transcribing your masterpiece... 🎙️</p>}
+                    
+                    {/* Results container */}
+                    {!isLoading && (transcription || audioUrl) && (
+                        <div className="mt-4 p-4 border rounded-lg bg-gray-50 flex flex-col items-center gap-4 shadow-sm">
+                            {transcription && (
+                                <p className="text-lg text-gray-800 leading-relaxed">{transcription}</p>
+                            )}
+                            {audioUrl && (
+                                <div className="w-full max-w-md">
+                                    <audio controls src={audioUrl} className="w-full"></audio>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
-        </>
+        </div>
     );
 }
