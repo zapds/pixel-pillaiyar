@@ -143,7 +143,7 @@ export default function Talk() {
     <div className="min-h-screen">
       <Navbar />
       <div className="flex flex-col gap-8 items-center justify-center mt-10">
-        <div className="w-[750px] h-[400px] flex items-center justify-center relative">
+        <div className="max-w-screen w-[750px] h-[400px] flex items-center justify-center relative">
           {isRecording ? (
             <AudioWaveform mediaStream={mediaStream} />
           ) : (
