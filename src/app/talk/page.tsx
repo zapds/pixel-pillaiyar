@@ -2,24 +2,50 @@
 
 import Navbar from "@/components/Navbar";
 import { useState, useRef } from "react";
-import { Mic } from "lucide-react";
+import { Cross, Delete, Mic, Send, StopCircle, Trash, X } from "lucide-react";
+import Image from "next/image";
 import AudioWaveform from "@/components/AudioWaveform";
 
 export default function Talk() {
   const [isRecording, setIsRecording] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [transcription, setTranscription] = useState("");
+  const [transcription, setTranscription] = useState("Hello There!");
   const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState(0);
   const [helperText, setHelperText] = useState("Press and hold to talk");
 
+  console.log(dragOffset);
+  const [previousResponseId, setPreviousResponseId] = useState<string | null>(null);
+  const [responseText, setResponseText] = useState<string>("Namaste. I am Lord Ganesha, here to remove your obstacles. If you’re feeling stuck like a knot, take one small, patient step today, and trust that the path reveals itself with every gentle effort. Tell me what weighs on your mind.");
+  
+
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const startX = useRef<number | null>(null);
 
+  const getResponse = async (message: string) => {
+    try {
+      const response = await fetch("/api/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message, previousResponseId }),
+      });
+      if (!response.ok) throw new Error("Network response was not ok");
+      const result = await response.json();
+      setResponseText(result.output);
+      setPreviousResponseId(result.id);
+    }
+
+    catch (err) {
+      console.error("Error fetching response:", err);
+      setResponseText("Error: Could not get response from Pixel Pillaiyar.");
+    }
+  }
+
+
   const handleStartRecording = async (clientX: number) => {
-    setTranscription("");
+    // setTranscription("");
     setAudioUrl(null);
     startX.current = clientX;
     setDragOffset(0);
@@ -70,6 +96,7 @@ export default function Talk() {
         if (!response.ok) throw new Error("Network response was not ok");
         const result = await response.json();
         setTranscription(result.text);
+        await getResponse(result.text);
       } catch (err) {
         console.error("Error sending audio:", err);
         setTranscription("Error: Could not transcribe audio.");
@@ -80,6 +107,7 @@ export default function Talk() {
       // cancel → discard audio
       audioChunksRef.current = [];
       setAudioUrl(null);
+
     }
   };
 
@@ -112,22 +140,24 @@ export default function Talk() {
   };
 
   return (
-    <div className="h-screen overflow-hidden">
+    <div className="min-h-screen">
       <Navbar />
       <div className="flex flex-col gap-8 items-center justify-center mt-10">
         <div className="w-[750px] h-[400px] flex items-center justify-center relative">
           {isRecording ? (
             <AudioWaveform mediaStream={mediaStream} />
           ) : (
-            <></>
+            <Image src="/background.jpg" alt="Ganesha Avatar" height={200} width={300} />
           )}
         </div>
 
+
         {/* Slider-style button */}
         <div
-          className={`relative w-80 h-16 rounded-full flex items-center justify-center shadow-lg select-none transition-colors duration-200
-          ${isRecording && dragOffset > 50 ? "bg-green-300" : ""}
-          ${isRecording && dragOffset < -50 ? "bg-red-300" : "bg-gray-100"}`}
+          className={`absolute bottom-8 w-80 h-16 rounded-full flex items-center justify-center shadow-lg select-none transition-colors duration-200
+          ${isRecording && dragOffset > 50 ? "bg-green-500" : ""}
+          ${isRecording && dragOffset < -50 ? "bg-red-500" : ""}
+          ${!isRecording || (dragOffset < 50 && dragOffset > -50) ? "bg-primary" : ""}`}
 
           onMouseDown={handlePointerDown}
           onMouseMove={handlePointerMove}
@@ -137,28 +167,40 @@ export default function Talk() {
           onTouchMove={handlePointerMove}
           onTouchEnd={handlePointerUp}
         >
-          <span className="absolute left-4 text-sm text-gray-500">Cancel ❌</span>
-          <span className="absolute right-4 text-sm text-gray-500">Send ✅</span>
+          <span className="absolute left-4 text-sm text-background">
+            <Trash size={24} />
+          </span>
+          <span className="absolute right-4 text-sm text-background">
+            <Send size={24} />
+          </span>
 
           {/* Knob */}
           <div
-            className="absolute w-14 h-14 bg-white rounded-full shadow-md flex items-center justify-center transition-transform duration-300 ease-out"
+            className="absolute w-14 h-14 bg-secondary rounded-full shadow-md flex items-center justify-center transition-transform duration-300 ease-out"
             style={{ transform: `translateX(${isRecording ? dragOffset : 0}px)` }}
           >
-            <Mic size={24} />
+            
+            {isRecording && dragOffset > 50 ? <Send size={24} /> 
+             : isRecording && dragOffset < -50 ? <Trash size={24} />
+             : isRecording ? <X size={24} />
+             : <Mic size={24} />
+          }
           </div>
         </div>
 
         {/* Helper text */}
-        <p className="text-gray-600 mt-2">{helperText}</p>
+        <p className="text-gray-600 animate-pulse mt-2">{helperText}</p>
 
         {/* Result area */}
         <div className="w-full max-w-2xl p-4 text-center">
           {isLoading && <p>Transcribing your masterpiece... 🎙️</p>}
           {!isLoading && (transcription || audioUrl) && (
-            <div className="mt-4 p-4 border rounded-lg bg-gray-50 flex flex-col items-center gap-4 shadow-sm">
+            <div className="mt-4 p-4 border rounded-lg flex flex-col items-center gap-4 shadow-sm">
               {transcription && (
-                <p className="text-lg text-gray-800 leading-relaxed">{transcription}</p>
+                <p className="text-lg text-primary leading-relaxed">{transcription}</p>
+              )}
+              {responseText && (
+                <p className="text-md leading-relaxed">{responseText}</p>
               )}
               {audioUrl && (
                 <div className="w-full max-w-md">
