@@ -118,65 +118,68 @@ export default function Talk() {
   };
 
   const handleStopRecording = async (action: "send" | "cancel") => {
-    mediaRecorderRef.current?.stop();
-    mediaStream?.getTracks().forEach((track) => track.stop());
-    setIsRecording(false);
-    setMediaStream(null);
-    setHelperText("Press and hold to talk");
+    if (!mediaRecorderRef.current) return;
 
-    if (action === "cancel" || audioChunksRef.current.length === 0) {
+    const recorder = mediaRecorderRef.current;
+    
+    recorder.onstop = async () => {
+      mediaStream?.getTracks().forEach((track) => track.stop());
+      setIsRecording(false);
+      setMediaStream(null);
+      setHelperText("Press and hold to talk");
+    
+      if (action === "cancel" || audioChunksRef.current.length === 0) {
+        audioChunksRef.current = [];
+        return;
+      }
+    
+      const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
       audioChunksRef.current = [];
-      return;
-    }
-
-    const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
-    audioChunksRef.current = [];
-    const userAudioUrl = URL.createObjectURL(audioBlob);
-
-    // Optimistically add user message with a loading state
-    const messageId = Date.now().toString();
-    setMessageHistory(prev => [
-        ...prev,
-        {
-            id: messageId,
-            user: { text: "Transcribing...", audioUrl: userAudioUrl },
-            bot: { text: "Thinking..." }
-        }
-    ]);
-
-    try {
-        setLoadState("transcribing");
-        const formData = new FormData();
-        formData.append("audio", audioBlob, "recording.webm");
-        const transcribeResponse = await fetch("/api/transcribe", { method: "POST", body: formData });
-        if (!transcribeResponse.ok) throw new Error("Transcription failed");
-        const { text: transcribedText } = await transcribeResponse.json();
-
-        // Update message with transcription
-        setMessageHistory(prev => prev.map(msg =>
-            msg.id === messageId ? { ...msg, user: { ...msg.user!, text: transcribedText } } : msg
-        ));
-        
-        const botResponseText = await getLLMResponse(transcribedText);
-        const botAudioUrl = await getSynthesizedVoice(botResponseText);
-
-        // Final update with bot response
-        setMessageHistory(prev => prev.map(msg =>
-            msg.id === messageId ? { ...msg, bot: { text: botResponseText, audioUrl: botAudioUrl ?? undefined } } : msg
-        ));
-
-        if (botAudioUrl) {
-            new Audio(botAudioUrl).play();
-        }
-
-    } catch (err) {
-        console.error("Error in voice processing pipeline:", err);
-        setMessageHistory(prev => prev.map(msg =>
-            msg.id === messageId ? { ...msg, bot: { text: "Sorry, an error occurred." } } : msg
-        ));
-    } finally {
-        setLoadState("ready");
-    }
+      const userAudioUrl = URL.createObjectURL(audioBlob);
+    
+      // 🔥 keep your transcription + LLM pipeline here unchanged
+      const messageId = Date.now().toString();
+      setMessageHistory(prev => [
+          ...prev,
+          {
+              id: messageId,
+              user: { text: "Transcribing...", audioUrl: userAudioUrl },
+              bot: { text: "..." }
+          }
+      ]);
+    
+      try {
+          setLoadState("transcribing");
+          const formData = new FormData();
+          formData.append("audio", audioBlob, "recording.webm");
+          const transcribeResponse = await fetch("/api/transcribe", { method: "POST", body: formData });
+          if (!transcribeResponse.ok) throw new Error("Transcription failed");
+          const { text: transcribedText } = await transcribeResponse.json();
+    
+          setMessageHistory(prev => prev.map(msg =>
+              msg.id === messageId ? { ...msg, user: { ...msg.user!, text: transcribedText } } : msg
+          ));
+          
+          const botResponseText = await getLLMResponse(transcribedText);
+          const botAudioUrl = await getSynthesizedVoice(botResponseText);
+    
+          setMessageHistory(prev => prev.map(msg =>
+              msg.id === messageId ? { ...msg, bot: { text: botResponseText, audioUrl: botAudioUrl ?? undefined } } : msg
+          ));
+    
+          if (botAudioUrl) new Audio(botAudioUrl).play();
+    
+      } catch (err) {
+          console.error("Error in voice processing pipeline:", err);
+          setMessageHistory(prev => prev.map(msg =>
+              msg.id === messageId ? { ...msg, bot: { text: "Sorry, an error occurred." } } : msg
+          ));
+      } finally {
+          setLoadState("ready");
+      }
+    };
+    
+    recorder.stop(); // <-- triggers onstop after final dataavailable
   };
 
   const handleDragEnd = (_: any, info: PanInfo) => {
