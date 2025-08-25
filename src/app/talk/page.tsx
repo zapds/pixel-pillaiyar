@@ -8,10 +8,11 @@ import AudioWaveform from "@/components/AudioWaveform";
 
 export default function Talk() {
   const [isRecording, setIsRecording] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [loadState, setLoadState] = useState("ready");
   const [transcription, setTranscription] = useState("Hello There!");
   const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [responseAudioUrl, setResponseAudioUrl] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState(0);
   const [helperText, setHelperText] = useState("Press and hold to talk");
 
@@ -25,6 +26,7 @@ export default function Talk() {
   const startX = useRef<number | null>(null);
 
   const getResponse = async (message: string) => {
+    setLoadState("asking");
     try {
       const response = await fetch("/api/ask", {
         method: "POST",
@@ -33,8 +35,8 @@ export default function Talk() {
       });
       if (!response.ok) throw new Error("Network response was not ok");
       const result = await response.json();
-      setResponseText(result.output);
       setPreviousResponseId(result.id);
+      return result.output;
     }
 
     catch (err) {
@@ -79,7 +81,6 @@ export default function Talk() {
     setHelperText("Press and hold to talk");
 
     if (action === "send") {
-      setIsLoading(true);
       const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
       const url = URL.createObjectURL(audioBlob);
       setAudioUrl(url);
@@ -87,7 +88,7 @@ export default function Talk() {
 
       const formData = new FormData();
       formData.append("audio", audioBlob, "recording.webm");
-
+      setLoadState("transcribing");
       try {
         const response = await fetch("/api/transcribe", {
           method: "POST",
@@ -96,17 +97,37 @@ export default function Talk() {
         if (!response.ok) throw new Error("Network response was not ok");
         const result = await response.json();
         setTranscription(result.text);
-        await getResponse(result.text);
+        const generatedResponse = await getResponse(result.text);
+        setResponseText(generatedResponse);
+        setLoadState("voicing");
+        const voiceResponse = await fetch("/api/speak", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: generatedResponse }),
+        });
+        const blob = await voiceResponse.blob();
+        const url = URL.createObjectURL(blob);
+        setResponseAudioUrl(url);
+  
+        const audio = new Audio(url);
+
+        audio.play();
+
+
       } catch (err) {
         console.error("Error sending audio:", err);
         setTranscription("Error: Could not transcribe audio.");
       } finally {
-        setIsLoading(false);
+        setLoadState("ready");
       }
     } else {
       // cancel → discard audio
       audioChunksRef.current = [];
       setAudioUrl(null);
+      setResponseAudioUrl(null);
+      setTranscription("");
+      setResponseText("");
+      setLoadState("ready");
 
     }
   };
@@ -147,7 +168,7 @@ export default function Talk() {
           {isRecording ? (
             <AudioWaveform mediaStream={mediaStream} />
           ) : (
-            <Image src="/background.jpg" alt="Ganesha Avatar" height={200} width={300} />
+            <img src="/bg_clean.png" alt="Ganesha Avatar" />
           )}
         </div>
 
@@ -193,18 +214,23 @@ export default function Talk() {
 
         {/* Result area */}
         <div className="w-full max-w-2xl p-4 text-center">
-          {isLoading && <p>Transcribing your masterpiece... 🎙️</p>}
-          {!isLoading && (transcription || audioUrl) && (
+          {!(loadState === "ready") && <p className="animate-caret-blink">{loadState}...</p>}
+          {loadState === "ready" && (transcription || audioUrl) && (
             <div className="mt-4 p-4 border rounded-lg flex flex-col items-center gap-4 shadow-sm">
               {transcription && (
                 <p className="text-lg text-primary leading-relaxed">{transcription}</p>
               )}
-              {responseText && (
-                <p className="text-md leading-relaxed">{responseText}</p>
-              )}
               {audioUrl && (
                 <div className="w-full max-w-md">
                   <audio controls src={audioUrl} className="w-full"></audio>
+                </div>
+              )}
+              {responseText && (
+                <p className="text-md leading-relaxed">{responseText}</p>
+              )}
+              {responseAudioUrl && (
+                <div className="w-full max-w-md">
+                  <audio controls src={responseAudioUrl} className="w-full"></audio>
                 </div>
               )}
             </div>
