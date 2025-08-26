@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
     const response = await client.responses.create({
       prompt: {
         "id": "pmpt_68aadab7c8b88193a311dae6e27b38d10c64f834186a33fb",
-        "version": "5"
+        "version": "4"
       },
       input: message,
       store: true,
