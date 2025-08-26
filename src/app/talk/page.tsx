@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, FormEvent } from "react";
 import { Mic, Send, Trash, MessageSquare } from "lucide-react";
 import Image from "next/image";
 import { motion, PanInfo } from "framer-motion";
+import { Drawer, DrawerTrigger, DrawerContent } from "@/components/ui/drawer"
 
 // Shadcn UI Components
 import Navbar from "@/components/Navbar";
@@ -13,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import Canvas from "@/components/Canvas";
+import { DialogTitle } from "@radix-ui/react-dialog";
 
 // Define the structure for a single conversation turn
 interface Message {
@@ -56,6 +58,7 @@ export default function Talk() {
   const audioChunksRef = useRef<Blob[]>([]);
   const micContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false)
 
 
   // --- AUTO-SCROLLING ---
@@ -255,98 +258,133 @@ export default function Talk() {
     setLoadState("ready");
   };
 
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <Navbar />
+
+      {/* Canvas / Waveform */}
       <div className="sticky top-0 z-50 w-full bg-background/80 backdrop-blur-sm border-b">
-            <div className="flex items-center justify-center relative h-64 md:h-96">
-                {isRecording ? (
-                    <AudioWaveform mediaStream={mediaStream} />
-                ) : (
-                  <Canvas current={curState} />
-                )}
-            </div>
-      </div>
-
-      {/* Main Content: Scrollable message history */}
-      <ScrollArea className="flex-1 p-4 pb-48"> {/* Padding bottom to clear sticky footer */}
-        <div className="max-w-3xl mx-auto space-y-8">
-
-            {/* Message History */}
-            <div className="space-y-6">
-                {messageHistory.map((msg) => (
-                    <div key={msg.id}>
-                        {msg.user && (
-                            <div className="flex justify-end mb-2">
-                                <div className="bg-primary text-primary-foreground p-3 rounded-lg max-w-[80%]">
-                                    <p className="text-sm">{msg.user.text}</p>
-                                    {msg.user.audioUrl && <audio controls src={msg.user.audioUrl} className="w-full h-10 mt-2" />}
-                                </div>
-                            </div>
-                        )}
-                        <div className="flex justify-start">
-                            <div className="bg-muted text-muted-foreground p-3 rounded-lg max-w-[80%]">
-                                <p className="text-sm">{msg.bot.text}</p>
-                                {msg.bot.audioUrl && <audio controls src={msg.bot.audioUrl} className="w-full h-10 mt-2" />}
-                            </div>
-                        </div>
-                    </div>
-                ))}
-                <div ref={messagesEndRef} />
-            </div>
-        </div>
-      </ScrollArea>
-
-      {/* Sticky Footer: Input section */}
-      <footer className="sticky bottom-0 z-50 w-full bg-background/80 backdrop-blur-sm border-t">
-        <div className="max-w-3xl mx-auto flex flex-col items-center gap-3 p-4">
-          <div className="flex items-center space-x-2">
-            <Mic size={16} className={`transition-colors ${mode === 'voice' ? 'text-primary' : 'text-muted-foreground'}`} />
-            <Switch checked={mode === 'chat'} onCheckedChange={(checked) => setMode(checked ? 'chat' : 'voice')} aria-label="Toggle input mode" />
-            <MessageSquare size={16} className={`transition-colors ${mode === 'chat' ? 'text-primary' : 'text-muted-foreground'}`} />
-          </div>
-
-          {mode === 'voice' ? (
-            // --- VOICE INPUT SLIDER ---
-            <div className="w-full flex flex-col items-center gap-2">
-                <p className="text-sm text-muted-foreground h-5">{helperText}</p>
-                <div ref={micContainerRef} className="w-80 h-16 rounded-full flex items-center justify-center bg-muted relative overflow-hidden select-none">
-                    <div className="absolute left-0 top-0 h-full w-1/2 bg-red-500/20 flex items-center justify-start pl-6 text-red-500"><Trash /></div>
-                    <div className="absolute right-0 top-0 h-full w-1/2 bg-green-500/20 flex items-center justify-end pr-6 text-green-500"><Send /></div>
-                    
-                    <motion.div
-                        className="w-16 h-16 rounded-full bg-primary flex items-center justify-center cursor-pointer touch-none z-10"
-                        onPointerDown={handleStartRecording}
-                        drag="x"
-                        dragConstraints={micContainerRef}
-                        dragSnapToOrigin
-                        onDragEnd={handleDragEnd}
-                        onDrag={handleDrag}
-                        whileTap={{ scale: 1.1 }}
-                        dragElastic={0.2}
-                    >
-                        <Mic className="text-primary-foreground" />
-                    </motion.div>
-                </div>
-            </div>
+        <div className="flex items-center justify-center relative h-64 md:h-96">
+          {isRecording ? (
+            <AudioWaveform mediaStream={mediaStream} />
           ) : (
-            // --- TEXT INPUT FORM ---
-            <form onSubmit={handleSendTextMessage} className="w-full max-w-md flex items-center gap-2">
-                <Input
-                    type="text"
-                    placeholder="Type your message..."
-                    value={chatInput}
-                    onChange={(e) => setChatInput(e.target.value)}
-                    className="flex-1"
-                    disabled={loadState !== 'ready'}
-                />
-                <Button type="submit" size="icon" disabled={!chatInput || loadState !== 'ready'}>
-                    <Send size={20} />
-                </Button>
-            </form>
+            <Canvas current={curState} />
           )}
         </div>
-      </footer>
+      </div>
+
+          {/* Sticky Footer Panel */}
+          <footer className="sticky bottom-0 z-50 w-full bg-background/80 backdrop-blur-sm border-t">
+            <div className="max-w-3xl mx-auto flex flex-col items-center gap-3 p-4">
+              <div className="flex items-center space-x-2">
+                <Mic
+                  size={16}
+                  className={`transition-colors ${mode === "voice" ? "text-primary" : "text-muted-foreground"}`}
+                />
+                <Switch
+                  checked={mode === "chat"}
+                  onCheckedChange={(checked) => setMode(checked ? "chat" : "voice")}
+                  aria-label="Toggle input mode"
+                />
+                <MessageSquare
+                  size={16}
+                  className={`transition-colors ${mode === "chat" ? "text-primary" : "text-muted-foreground"}`}
+                />
+              </div>
+
+              {mode === "voice" ? (
+                // VOICE INPUT SLIDER
+                <div className="w-full flex flex-col items-center gap-2">
+                  <p className="text-sm text-muted-foreground h-5">{helperText}</p>
+                  <div
+                    ref={micContainerRef}
+                    className="w-80 h-16 rounded-full flex items-center justify-center bg-muted relative overflow-hidden select-none"
+                  >
+                    <div className="absolute left-0 top-0 h-full w-1/2 bg-red-500/20 flex items-center justify-start pl-6 text-red-500">
+                      <Trash />
+                    </div>
+                    <div className="absolute right-0 top-0 h-full w-1/2 bg-green-500/20 flex items-center justify-end pr-6 text-green-500">
+                      <Send />
+                    </div>
+
+                    <motion.div
+                      className="w-16 h-16 rounded-full bg-primary flex items-center justify-center cursor-pointer touch-none z-10"
+                      onPointerDown={handleStartRecording}
+                      drag="x"
+                      dragConstraints={micContainerRef}
+                      dragSnapToOrigin
+                      onDragEnd={handleDragEnd}
+                      onDrag={handleDrag}
+                      whileTap={{ scale: 1.1 }}
+                      dragElastic={0.2}
+                    >
+                      <Mic className="text-primary-foreground" />
+                    </motion.div>
+                    
+                  </div>
+                  <Button onClick={() => setOpen(true)}>Open Chat</Button>
+                </div>
+              ) : (
+                // TEXT INPUT FORM
+                <div className="flex flex-col items-center gap-2">
+                  <form onSubmit={handleSendTextMessage} className="w-full max-w-md flex items-center gap-2">
+                    <Input
+                      type="text"
+                      placeholder="Type your message..."
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      className="flex-1"
+                      disabled={loadState !== "ready"}
+                    />
+                    <Button type="submit" size="icon" disabled={!chatInput || loadState !== "ready"}>
+                      <Send size={20} />
+                    </Button>
+                  </form>
+                  <Button onClick={() => setOpen(true)}>Open Chat</Button>
+                </div>
+              )}
+            </div>
+          </footer>
+
+          <Drawer open={open} onOpenChange={setOpen}>
+  {/* Drawer Content: Chat Messages */}
+  <DrawerContent className="h-[70vh] p-4 flex flex-col">
+    <DialogTitle>Chat</DialogTitle>
+    
+    {/* Scrollable messages area */}
+    <ScrollArea className="flex-1">
+      <div className="max-w-3xl mx-auto space-y-8">
+        <div className="space-y-6">
+          {messageHistory.map((msg) => (
+            <div key={msg.id}>
+              {msg.user && (
+                <div className="flex justify-end mb-2">
+                  <div className="bg-primary text-primary-foreground p-3 rounded-lg max-w-[80%]">
+                    <p className="text-sm">{msg.user.text}</p>
+                    {msg.user.audioUrl && (
+                      <audio controls src={msg.user.audioUrl} className="w-full h-10 mt-2" />
+                    )}
+                  </div>
+                </div>
+              )}
+              <div className="flex justify-start">
+                <div className="bg-muted text-muted-foreground p-3 rounded-lg max-w-[80%]">
+                  <p className="text-sm">{msg.bot.text}</p>
+                  {msg.bot.audioUrl && (
+                    <audio controls src={msg.bot.audioUrl} className="w-full h-10 mt-2" />
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+          <div ref={messagesEndRef} />
+        </div>
+      </div>
+    </ScrollArea>
+  </DrawerContent>
+</Drawer>
+
     </div>
-  );
+  )
 }
