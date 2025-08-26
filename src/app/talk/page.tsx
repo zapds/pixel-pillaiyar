@@ -150,7 +150,7 @@ export default function Talk() {
           {
               id: messageId,
               user: { text: "Transcribing...", audioUrl: userAudioUrl },
-              bot: { text: "..." }
+              bot: { text: "Thinking..." }
           }
       ]);
     
@@ -266,11 +266,7 @@ export default function Talk() {
       {/* Canvas / Waveform */}
       <div className="sticky top-0 z-50 w-full bg-background/80 backdrop-blur-sm border-b">
         <div className="flex items-center justify-center relative h-64 md:h-96">
-          {isRecording ? (
-            <AudioWaveform mediaStream={mediaStream} />
-          ) : (
-            <Canvas current={curState} />
-          )}
+          <Canvas current={curState} />
         </div>
       </div>
 
