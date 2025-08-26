@@ -1,9 +1,9 @@
 import { useEffect, useRef } from "react";
-import Image from "next/image";
 
-export default function Canvas({ current }: { current: "neutral" | "talking" }) {
+export default function Canvas({ current }: { current: "neutral" | "talking" | "thinking" }) {
   const blinkRef = useRef<HTMLVideoElement | null>(null);
   const talkRef = useRef<HTMLVideoElement | null>(null);
+  const thinkRef = useRef<HTMLVideoElement | null>(null);
 
   // Neutral state: show blink video, pause at first frame, play every 3s
   useEffect(() => {
@@ -36,16 +36,17 @@ export default function Canvas({ current }: { current: "neutral" | "talking" }) 
     }
   }, [current]);
 
+  // Thinking state: restart loop on entry
+  useEffect(() => {
+    if (current === "thinking" && thinkRef.current) {
+      const video = thinkRef.current;
+      video.currentTime = 0;
+      video.play();
+    }
+  }, [current]);
+
   return (
     <div className="relative w-[700px] h-[350px]">
-      {/* Background */}
-      <Image
-        src="/bg_removed.jpg"
-        alt="Background"
-        fill
-        className="object-cover"
-      />
-
       {/* Character */}
       <div className="absolute inset-0 flex items-center justify-center">
         {current === "neutral" && (
@@ -70,6 +71,18 @@ export default function Canvas({ current }: { current: "neutral" | "talking" }) 
           <video
             ref={talkRef}
             src="/animations/talk_full.mp4"
+            width={700}
+            height={350}
+            muted
+            playsInline
+            loop
+          />
+        )}
+
+        {current === "thinking" && (
+          <video
+            ref={thinkRef}
+            src="/animations/think.mp4"
             width={700}
             height={350}
             muted

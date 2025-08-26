@@ -35,7 +35,7 @@ export default function Talk() {
   const [loadState, setLoadState] = useState<"ready" | "transcribing" | "asking" | "voicing">("ready");
   const [chatInput, setChatInput] = useState("");
   const [helperText, setHelperText] = useState("Press and hold to talk");
-  const [curState, setCurState] = useState<"neutral" | "talking">("neutral");
+  const [curState, setCurState] = useState<"neutral" | "talking" | "thinking">("neutral");
   const [previousResponseId, setPreviousResponseId] = useState<string | null>(null);
 
   // Central state for all messages
@@ -153,6 +153,7 @@ export default function Talk() {
     
       try {
           setLoadState("transcribing");
+          setCurState("thinking");
           const formData = new FormData();
           formData.append("audio", audioBlob, "recording.webm");
           const transcribeResponse = await fetch("/api/transcribe", { method: "POST", body: formData });
@@ -231,6 +232,8 @@ export default function Talk() {
         }
     ]);
 
+    setCurState("thinking");
+
     const botResponseText = await getLLMResponse(userMessageText);
     const botAudioUrl = await getSynthesizedVoice(botResponseText);
 
@@ -239,8 +242,15 @@ export default function Talk() {
     ));
 
     if (botAudioUrl) {
+      const audio = new Audio(botAudioUrl);
 
-        new Audio(botAudioUrl).play().then();
+      // enter talking state when playback starts
+      audio.addEventListener("play", () => setCurState("talking"));
+    
+      // back to neutral when playback ends
+      audio.addEventListener("ended", () => setCurState("neutral"));
+    
+      audio.play();
     }
     setLoadState("ready");
   };
