@@ -4,6 +4,7 @@
 
 PixelPillaiyar is an AI-powered chatbot inspired by Lord Ganesha that provides philosophical guidance through both text and voice interactions. The application features a retro pixel art aesthetic and supports real-time voice conversations with an animated avatar.
 
+[Demo Video](https://drive.google.com/file/d/1WtjRiEJyKnrNsNHh_yaJwjO67Cn_8rge/view)
 ## 🌟 Features
 
 - **Voice-to-Voice Conversations**: Speak directly to the AI and receive audio responses
@@ -185,7 +186,6 @@ if (state === "talking") {
 - **Responsive Design**: Scales across device sizes
 
 ## 🎨 Design System
-
 
 ### Typography
 - **Primary**: Press Start 2P (pixel font)
