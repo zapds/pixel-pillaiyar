@@ -12,6 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import Canvas from "@/components/Canvas";
 
 // Define the structure for a single conversation turn
 interface Message {
@@ -27,66 +28,6 @@ interface Message {
 }
 
 
-
-export function Canvas() {
-  const [current, setCurrent] = useState<"neutral" | "talking">("neutral");
-  const [frame, setFrame] = useState<"neutral" | "talking">("neutral");
-
-  const characterSprites = {
-    neutral: "/sprites/neutral_nobg.png",
-    talking: "/sprites/happy_nobg.png",
-    happy: "/sprites/happy_nobg.png",
-    sad: "/sprites/sad_nobg.png",
-    angry: "/sprites/angry_nobg.png",
-  };
-
-  // Handle talking animation (switching between neutral and talking every 0.25s)
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
-
-    if (current === "talking") {
-      interval = setInterval(() => {
-        setFrame((prev) => (prev === "neutral" ? "talking" : "neutral"));
-      }, 250);
-    } else {
-      setFrame("neutral");
-    }
-
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [current]);
-
-  return (
-    <div className="relative w-[700px] h-[350px]">
-      {/* Background */}
-      <Image
-        src="/bg_removed.jpg"
-        alt="Background"
-        fill
-        className="object-cover"
-      />
-
-      {/* Character */}
-      <div className="absolute bottom-10 left-1/2 -translate-x-1/2">
-        <Image
-          src={characterSprites[frame]}
-          alt="Character"
-          width={200}
-          height={200}
-        />
-      </div>
-
-      {/* Controls */}
-      <div className="absolute top-5 left-5 flex gap-2">
-        <button onClick={() => setCurrent("neutral")}>😐 Neutral</button>
-        <button onClick={() => setCurrent("talking")}>🗣️ Talking</button>
-      </div>
-    </div>
-  );
-}
-
-
 export default function Talk() {
   // --- STATE MANAGEMENT ---
   const [mode, setMode] = useState<'voice' | 'chat'>('voice');
@@ -94,6 +35,7 @@ export default function Talk() {
   const [loadState, setLoadState] = useState<"ready" | "transcribing" | "asking" | "voicing">("ready");
   const [chatInput, setChatInput] = useState("");
   const [helperText, setHelperText] = useState("Press and hold to talk");
+  const [curState, setCurState] = useState<"neutral" | "talking">("neutral");
   const [previousResponseId, setPreviousResponseId] = useState<string | null>(null);
 
   // Central state for all messages
@@ -228,7 +170,17 @@ export default function Talk() {
               msg.id === messageId ? { ...msg, bot: { text: botResponseText, audioUrl: botAudioUrl ?? undefined } } : msg
           ));
     
-          if (botAudioUrl) new Audio(botAudioUrl).play();
+          if (botAudioUrl) {
+            const audio = new Audio(botAudioUrl);
+
+            // enter talking state when playback starts
+            audio.addEventListener("play", () => setCurState("talking"));
+          
+            // back to neutral when playback ends
+            audio.addEventListener("ended", () => setCurState("neutral"));
+          
+            audio.play();
+          }
     
       } catch (err) {
           console.error("Error in voice processing pipeline:", err);
@@ -287,7 +239,8 @@ export default function Talk() {
     ));
 
     if (botAudioUrl) {
-        new Audio(botAudioUrl).play();
+
+        new Audio(botAudioUrl).play().then();
     }
     setLoadState("ready");
   };
@@ -300,7 +253,7 @@ export default function Talk() {
                 {isRecording ? (
                     <AudioWaveform mediaStream={mediaStream} />
                 ) : (
-                  <Canvas />
+                  <Canvas current={curState} />
                 )}
             </div>
       </div>
