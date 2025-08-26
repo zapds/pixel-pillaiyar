@@ -70,7 +70,7 @@ export default function AboutPage() {
               </Avatar>
               <p className="font-semibold">Thotli Harshith (EC24B1077)</p>
               <Link
-                href="https://instagram.com/t.harshith"
+                href="https://instagram.com/t.harshith12"
                 target="_blank"
                 className="text-sm hover:underline"
               >
