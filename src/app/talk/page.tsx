@@ -26,6 +26,67 @@ interface Message {
   };
 }
 
+
+
+export function Canvas() {
+  const [current, setCurrent] = useState<"neutral" | "talking">("neutral");
+  const [frame, setFrame] = useState<"neutral" | "talking">("neutral");
+
+  const characterSprites = {
+    neutral: "/sprites/neutral_nobg.png",
+    talking: "/sprites/happy_nobg.png",
+    happy: "/sprites/happy_nobg.png",
+    sad: "/sprites/sad_nobg.png",
+    angry: "/sprites/angry_nobg.png",
+  };
+
+  // Handle talking animation (switching between neutral and talking every 0.25s)
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+
+    if (current === "talking") {
+      interval = setInterval(() => {
+        setFrame((prev) => (prev === "neutral" ? "talking" : "neutral"));
+      }, 250);
+    } else {
+      setFrame("neutral");
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [current]);
+
+  return (
+    <div className="relative w-[700px] h-[350px]">
+      {/* Background */}
+      <Image
+        src="/bg_removed.jpg"
+        alt="Background"
+        fill
+        className="object-cover"
+      />
+
+      {/* Character */}
+      <div className="absolute bottom-10 left-1/2 -translate-x-1/2">
+        <Image
+          src={characterSprites[frame]}
+          alt="Character"
+          width={200}
+          height={200}
+        />
+      </div>
+
+      {/* Controls */}
+      <div className="absolute top-5 left-5 flex gap-2">
+        <button onClick={() => setCurrent("neutral")}>😐 Neutral</button>
+        <button onClick={() => setCurrent("talking")}>🗣️ Talking</button>
+      </div>
+    </div>
+  );
+}
+
+
 export default function Talk() {
   // --- STATE MANAGEMENT ---
   const [mode, setMode] = useState<'voice' | 'chat'>('voice');
@@ -234,17 +295,19 @@ export default function Talk() {
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <Navbar />
-
-      {/* Main Content: Scrollable message history */}
-      <ScrollArea className="flex-1 p-4 pb-48"> {/* Padding bottom to clear sticky footer */}
-        <div className="max-w-3xl mx-auto space-y-8">
+      <div className="sticky top-0 z-50 w-full bg-background/80 backdrop-blur-sm border-b">
             <div className="flex items-center justify-center relative h-64 md:h-96">
                 {isRecording ? (
                     <AudioWaveform mediaStream={mediaStream} />
                 ) : (
-                    <Image src="/bg_clean.png" alt="Ganesha Avatar" width={300} height={300} priority />
+                  <Canvas />
                 )}
             </div>
+      </div>
+
+      {/* Main Content: Scrollable message history */}
+      <ScrollArea className="flex-1 p-4 pb-48"> {/* Padding bottom to clear sticky footer */}
+        <div className="max-w-3xl mx-auto space-y-8">
 
             {/* Message History */}
             <div className="space-y-6">
