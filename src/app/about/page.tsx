@@ -74,7 +74,7 @@ export default function AboutPage() {
                 target="_blank"
                 className="text-sm hover:underline"
               >
-                @t.harshith
+                @t.harshith12
               </Link>
             </CardContent>
           </Card>
