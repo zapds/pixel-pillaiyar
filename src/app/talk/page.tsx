@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, FormEvent } from "react";
-import { Mic, Send, Trash, MessageSquare } from "lucide-react";
+import { Mic, Send, Trash, MessageSquare, MessageCircle } from "lucide-react";
 import Image from "next/image";
 import { motion, PanInfo } from "framer-motion";
 import { Drawer, DrawerTrigger, DrawerContent } from "@/components/ui/drawer"
@@ -44,6 +44,70 @@ export default function Talk() {
   const [messageHistory, setMessageHistory] = useState<Message[]>([
     {
       id: "initial-greetings",
+      bot: {
+        text: "Namaste. I am Lord Ganesha, here to remove your obstacles. If you’re feeling stuck like a knot, take one small, patient step today, and trust that the path reveals itself with every gentle effort. Tell me what weighs on your mind.",
+        // You could pre-generate and link the initial audio here
+        // audioUrl: "/audio/initial_greeting.mp3",
+      },
+    },
+    {
+      id: "initial-greetings2",
+      bot: {
+        text: "Namaste. I am Lord Ganesha, here to remove your obstacles. If you’re feeling stuck like a knot, take one small, patient step today, and trust that the path reveals itself with every gentle effort. Tell me what weighs on your mind.",
+        // You could pre-generate and link the initial audio here
+        // audioUrl: "/audio/initial_greeting.mp3",
+      },
+    },
+    {
+      id: "initial-greetings3",
+      bot: {
+        text: "Namaste. I am Lord Ganesha, here to remove your obstacles. If you’re feeling stuck like a knot, take one small, patient step today, and trust that the path reveals itself with every gentle effort. Tell me what weighs on your mind.",
+        // You could pre-generate and link the initial audio here
+        // audioUrl: "/audio/initial_greeting.mp3",
+      },
+    },
+    {
+      id: "initial-greetings5",
+      bot: {
+        text: "Namaste. I am Lord Ganesha, here to remove your obstacles. If you’re feeling stuck like a knot, take one small, patient step today, and trust that the path reveals itself with every gentle effort. Tell me what weighs on your mind.",
+        // You could pre-generate and link the initial audio here
+        // audioUrl: "/audio/initial_greeting.mp3",
+      },
+    },
+    {
+      id: "initial-greetings6",
+      bot: {
+        text: "Namaste. I am Lord Ganesha, here to remove your obstacles. If you’re feeling stuck like a knot, take one small, patient step today, and trust that the path reveals itself with every gentle effort. Tell me what weighs on your mind.",
+        // You could pre-generate and link the initial audio here
+        // audioUrl: "/audio/initial_greeting.mp3",
+      },
+    },
+    {
+      id: "initial-greetings7",
+      bot: {
+        text: "Namaste. I am Lord Ganesha, here to remove your obstacles. If you’re feeling stuck like a knot, take one small, patient step today, and trust that the path reveals itself with every gentle effort. Tell me what weighs on your mind.",
+        // You could pre-generate and link the initial audio here
+        // audioUrl: "/audio/initial_greeting.mp3",
+      },
+    },
+    {
+      id: "initial-greetings8",
+      bot: {
+        text: "Namaste. I am Lord Ganesha, here to remove your obstacles. If you’re feeling stuck like a knot, take one small, patient step today, and trust that the path reveals itself with every gentle effort. Tell me what weighs on your mind.",
+        // You could pre-generate and link the initial audio here
+        // audioUrl: "/audio/initial_greeting.mp3",
+      },
+    },
+    {
+      id: "initial-greetings9",
+      bot: {
+        text: "Namaste. I am Lord Ganesha, here to remove your obstacles. If you’re feeling stuck like a knot, take one small, patient step today, and trust that the path reveals itself with every gentle effort. Tell me what weighs on your mind.",
+        // You could pre-generate and link the initial audio here
+        // audioUrl: "/audio/initial_greeting.mp3",
+      },
+    },
+    {
+      id: "initial-greetings10",
       bot: {
         text: "Namaste. I am Lord Ganesha, here to remove your obstacles. If you’re feeling stuck like a knot, take one small, patient step today, and trust that the path reveals itself with every gentle effort. Tell me what weighs on your mind.",
         // You could pre-generate and link the initial audio here
@@ -151,7 +215,7 @@ export default function Talk() {
               id: messageId,
               user: { text: "Transcribing...", audioUrl: userAudioUrl },
               bot: { text: "Thinking..." }
-          }
+          },
       ]);
     
       try {
@@ -319,7 +383,10 @@ export default function Talk() {
                     </motion.div>
                     
                   </div>
-                  <Button onClick={() => setOpen(true)}>Open Chat</Button>
+                  <Button onClick={() => setOpen(true)}>
+                    <MessageCircle />
+                    Open Chat
+                  </Button>
                 </div>
               ) : (
                 // TEXT INPUT FORM
@@ -349,7 +416,7 @@ export default function Talk() {
     <DialogTitle>Chat</DialogTitle>
     
     {/* Scrollable messages area */}
-    <ScrollArea className="flex-1">
+    <ScrollArea className="flex-1 h-[60vh] px-4 flex flex-col">
       <div className="max-w-3xl mx-auto space-y-8">
         <div className="space-y-6">
           {messageHistory.map((msg) => (
