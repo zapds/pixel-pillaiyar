@@ -198,6 +198,6 @@ Ensure the following are set in your deployment platform:
 
 
 ### Authors
-- [Narendhar T S (EC24B1053)](https://github.com/zapds/) + 2 useless mfs
-- PissVanth (EC24Bidk)
-- HarShit (ME24Bidk)
+- [Narendhar T S (EC24B1053)](https://github.com/zapds/) carry dev
+- Vishwanth V (ME24B2012) existed
+- Harshith (EC24B1077) ahn valthukal valthukal
