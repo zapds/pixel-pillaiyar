@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Press_Start_2P } from "next/font/google";
-import Navbar from "@/components/Navbar";
+import { Analytics } from "@vercel/analytics/next"
 import "./globals.css";
 
 
@@ -25,6 +25,7 @@ export default function RootLayout({
     <html className="dark" lang="en">
       <body className={`${font.className} antialiased`}>
         {children}
+        <Analytics />
       </body>
     </html>
   );
